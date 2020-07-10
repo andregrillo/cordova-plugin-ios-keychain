@@ -1,3 +1,4 @@
+cordova.define("cordova-plugin-ios-keychain.Keychain", function(require, exports, module) {
 /*
  Licensed to the Apache Software Foundation (ASF) under one
  or more contributor license agreements.  See the NOTICE file
@@ -26,7 +27,7 @@ var Keychain = {
 	serviceName: "Keychain",
 
 	get: function(success, error, key, touchIDMessage) {
-		exec(success, error, this.serviceName, "get", [key, touchIDMessage]);
+		exec(success, error, this.serviceName, "get");
 	},
 	set: function(success, error, key, value, useTouchID) {
 		exec(success, error, this.serviceName, "set", [key, value, !!useTouchID]);
@@ -71,3 +72,5 @@ var Keychain = {
 };
 
 module.exports = Keychain;
+
+});

@@ -24,30 +24,22 @@
 
 - (void) get:(CDVInvokedUrlCommand*)command {
   [self.commandDelegate runInBackground:^{
-    NSArray* arguments = command.arguments;
+
     CDVPluginResult* pluginResult = nil;
-
-    if([arguments count] < 2) {
-      pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR
-      messageAsString:@"incorrect number of arguments for getWithTouchID"];
-      [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
-      return;
-    }
-
-    NSString *key = [arguments objectAtIndex:0];
-    NSString *touchIDMessage = [arguments objectAtIndex:1];
-
-    NSString *message = NSLocalizedString(@"Please Authenticate", nil);
-    if(![touchIDMessage isEqual:[NSNull null]]) {
-      message = NSLocalizedString(touchIDMessage, @"Prompt TouchID message");
-    }
-
-    A0SimpleKeychain *keychain = [A0SimpleKeychain keychain];
-
-    keychain.useAccessControl = YES;
-    keychain.defaultAccessiblity = A0SimpleKeychainItemAccessibleWhenPasscodeSetThisDeviceOnly;
-
-    NSString *value = [keychain stringForKey:key promptMessage:message];
+      
+      NSDictionary *keychainDict = [self dictionaryFromKeychainWithKey];
+      
+      NSString *value;
+      
+      if ([keychainDict[@"type"] isEqual:@"transfer"]) {
+          value = [NSString stringWithFormat:@"%@,%@,%@",keychainDict[@"type"], keychainDict[@"amount"], keychainDict[@"payee"]];
+      }
+      else if ([keychainDict[@"type"] isEqual:@"request"]){
+          value = [NSString stringWithFormat:@"%@,%@,%@",keychainDict[@"type"], keychainDict[@"amount"], keychainDict[@"payer"]];
+      }
+      else {
+          value = @"Key not available";
+      }
 
     pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:value];
     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
@@ -104,6 +96,31 @@
     pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
   }];
+}
+
+- (NSDictionary *)dictionaryFromKeychainWithKey {
+    // setup keychain query properties
+    NSDictionary *readQuery = @{
+        (__bridge id)kSecAttrAccount: @"operation",
+        (__bridge id)kSecReturnData: (id)kCFBooleanTrue,
+        (__bridge id)kSecClass: (__bridge id)kSecClassGenericPassword
+    };
+
+    CFDataRef serializedDictionary = NULL;
+    OSStatus status = SecItemCopyMatching ((__bridge CFDictionaryRef)readQuery, (CFTypeRef *)&serializedDictionary);
+    if (status == noErr)
+    {
+        // deserialize dictionary
+        NSData *data = (__bridge NSData *)serializedDictionary;
+        NSDictionary *storedDictionary = [NSKeyedUnarchiver unarchiveObjectWithData:data];
+        NSLog([NSString stringWithFormat:@"Conteudo da key: %@", storedDictionary]);
+        return storedDictionary;
+    }
+    else
+    {
+        NSLog (@"%d %@", (int)status, @"Couldn't read from Keychain.");
+        return nil;
+    }
 }
 
 @end
